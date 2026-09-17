@@ -38,6 +38,13 @@ EXPLICIT_PHRASES = [
     "spank me", "f*ck", "hookup", "escort service",
     "sugar daddy", "sugar mummy", "sugar mama", "send nudes",
     "sell nudes", "nude pics", "sex for money", "paid sex",
+    "date me tonight",
+    "be my companion",
+    "looking for a girlfriend",
+    "looking for a boyfriend", 
+    "spend the night",
+    "chill with me tonight",
+    "relationship for money",
 
     # Physical Harm
     "help me beat", "help me kill", "help me stab", "help me shoot",
@@ -64,6 +71,9 @@ HARD_BLOCKLIST = [
     r"\b(gun|pistol|kn[i1]fe|dagger|blade|machete|bomb|explosive|ammunition|bullet|rifle)\b",
     r"\b(su[i1]c[i1]de|self[- ]?harm|cut my wrist|slit my|hang myself)\b",
 
+    # ---- Dating / Companion Requests ----
+    r"\b(date me|be my date|looking for a girlfriend|looking for a boyfriend|romantic|companionship|cuddle|spend time with me|chill with me tonight|relationship for money)\b",
+    r"\b(sugar daddy|sugar mummy|sugar mama|hookup|escort|paid dating|rent a girlfriend|rent a boyfriend)\b",
     # ---- Sexual Explicit Content ----
     r"\b(f+u+c+k+|fck|b[a@]ng me|finger me|sex work|camshow|stripper|lapdance)\b",
     r"\b(hookup|escort|sugar daddy|sugar mummy|sugar mama|pimp|pornography)\b",
@@ -139,6 +149,22 @@ def get_onnx_embedding(text: str) -> np.ndarray:
 def cosine_similarity(a: np.ndarray, b: np.ndarray) -> float:
     return float(np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b)))
 
+def title_description_mismatch(title: str, description: str) -> bool:
+    stop_words = {
+        "i", "a", "an", "the", "need", "want", "looking", "for",
+        "to", "my", "me", "someone", "please", "urgent", "help",
+        "campus", "student", "budget", "cheap", "affordable", "good",
+        "rate", "asap", "quickly", "available", "needed", "dm", "contact"
+    }
+
+    title_keywords = set(title.lower().split()) - stop_words
+    desc_keywords = set(description.lower().split()) - stop_words
+
+    # Only flag if title has meaningful words and NONE overlap with description
+    if len(title_keywords) >= 2 and len(title_keywords & desc_keywords) == 0:
+        return True
+
+    return False
 
 def is_contextually_inappropriate(text: str) -> bool:
     """
@@ -273,6 +299,13 @@ def classify_job(job: JobPostRequest):
             "category": "borderline_content",
             "confidence": round(toxicity_score, 4),
             "reason": f"Borderline toxicity score: {toxicity_score:.2f} (Layer 2)",
+        }
+    if title_description_mismatch(job.title, job.description):
+        return {
+            "status": "FLAG_FOR_REVIEW",
+            "category": "job_unsure",
+            "confidence": 0.80,
+            "reason": "Title and description appear unrelated (consistency check)",
         }
 
     # ------------------------------------------------------------------
