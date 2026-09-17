@@ -119,6 +119,7 @@ VALID_JOB_ANCHORS = [
     "Need a skilled student to complete a job or errand on campus",
     "Hiring a fellow student to help with work design or tutoring",
     "Campus job request for design writing tutoring photography or errand running",
+    "Hiring a student cook or chef for meal prep cooking and food catering services"  # <--- ADD THIS
 ]
 
 
@@ -154,13 +155,21 @@ def title_description_mismatch(title: str, description: str) -> bool:
         "i", "a", "an", "the", "need", "want", "looking", "for",
         "to", "my", "me", "someone", "please", "urgent", "help",
         "campus", "student", "budget", "cheap", "affordable", "good",
-        "rate", "asap", "quickly", "available", "needed", "dm", "contact"
+        "rate", "asap", "quickly", "available", "needed", "dm", "contact",
+        "service", "services"
     }
 
-    title_keywords = set(title.lower().split()) - stop_words
-    desc_keywords = set(description.lower().split()) - stop_words
+    t_clean = title.strip().lower()
+    d_clean = description.strip().lower()
 
-    # Only flag if title has meaningful words and NONE overlap with description
+    # Exact substring match — if description contains title (or vice versa), bypass mismatch
+    if t_clean in d_clean or d_clean in t_clean:
+        return False
+
+    title_keywords = set(re.findall(r'\b\w+\b', t_clean)) - stop_words
+    desc_keywords = set(re.findall(r'\b\w+\b', d_clean)) - stop_words
+
+    # Only flag if title has at least 2 distinct keywords and ZERO match the description
     if len(title_keywords) >= 2 and len(title_keywords & desc_keywords) == 0:
         return True
 
