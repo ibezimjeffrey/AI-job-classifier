@@ -213,6 +213,9 @@ def match_explicit_phrase(text: str):
 # =============================================================================
 # MAIN ENDPOINT
 # =============================================================================
+@app.get("/ping")
+def ping():
+    return {"status": "ok"}
 
 @app.post("/classify-job")
 def classify_job(job: JobPostRequest):
