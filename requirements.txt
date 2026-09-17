@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+onnxruntime
+tokenizers
+numpy
+scikit-learn
+joblib
+alt-profanity-check
+huggingface_hub
