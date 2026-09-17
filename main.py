@@ -266,7 +266,7 @@ def classify_job(job: JobPostRequest):
                 "status": "REJECTED",
                 "category": "community_violation",
                 "confidence": 1.0,
-                "reason": "Safety policy violation — hard blocklist (Layer 1A)",
+                "reason": "Safety policy violation ",
             }
 
     # ------------------------------------------------------------------
@@ -278,7 +278,7 @@ def classify_job(job: JobPostRequest):
             "status": "REJECTED",
             "category": "community_violation",
             "confidence": 1.0,
-            "reason": f"Explicit phrase matched: '{triggered_phrase}' (Layer 1B)",
+            "reason": f"Explicit phrase matched: '{triggered_phrase}'",
         }
 
     # ------------------------------------------------------------------
@@ -290,7 +290,7 @@ def classify_job(job: JobPostRequest):
             "status": "REJECTED",
             "category": "inappropriate_content",
             "confidence": round(toxicity_score, 4),
-            "reason": f"High toxicity score: {toxicity_score:.2f} (Layer 2)",
+            "reason": "Inappropriate Content",
         }
     # Borderline toxicity — flag for human review instead of hard reject
     if toxicity_score > 0.35:
@@ -298,14 +298,14 @@ def classify_job(job: JobPostRequest):
             "status": "FLAG_FOR_REVIEW",
             "category": "borderline_content",
             "confidence": round(toxicity_score, 4),
-            "reason": f"Borderline toxicity score: {toxicity_score:.2f} (Layer 2)",
+            "reason": "Modify Job Post",
         }
     if title_description_mismatch(job.title, job.description):
         return {
             "status": "FLAG_FOR_REVIEW",
             "category": "job_unsure",
             "confidence": 0.80,
-            "reason": "Title and description appear unrelated (consistency check)",
+            "reason": "Title and description appear unrelated",
         }
 
     # ------------------------------------------------------------------
@@ -317,7 +317,7 @@ def classify_job(job: JobPostRequest):
             "status": "REJECTED",
             "category": "spam",
             "confidence": 0.90,
-            "reason": "Semantically unrelated to any valid campus job post (Layer 3 ONNX)",
+            "reason": "Modify Job Post",
         }
 
     # ------------------------------------------------------------------
@@ -333,7 +333,7 @@ def classify_job(job: JobPostRequest):
             "status": "REJECTED",
             "category": predicted_label,
             "confidence": round(confidence, 4),
-            "reason": f"Classified as '{predicted_label}' with confidence {confidence:.2f} (Layer 4)",
+            "reason": "Modify Job Post",
         }
 
     # Borderline: low confidence across the board — flag for human review
@@ -342,7 +342,7 @@ def classify_job(job: JobPostRequest):
             "status": "FLAG_FOR_REVIEW",
             "category": "job_unsure",
             "confidence": round(confidence, 4),
-            "reason": f"Low classifier confidence: {confidence:.2f} — needs human review (Layer 4)",
+            "reason": "Modify Job Post",
         }
 
     # ------------------------------------------------------------------
@@ -352,5 +352,5 @@ def classify_job(job: JobPostRequest):
         "status": "APPROVED",
         "category": "job_okay",
         "confidence": round(confidence, 4),
-        "reason": "Passed all moderation layers",
+        "reason": "Job Validation Successful",
     }
