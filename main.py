@@ -346,7 +346,7 @@ def classify_job(job: JobPostRequest):
         }
 
     # Borderline: low confidence across the board — flag for human review
-    if confidence < 0.65:
+    if confidence < 0.4:
         return {
             "status": "FLAG_FOR_REVIEW",
             "category": "job_unsure",
