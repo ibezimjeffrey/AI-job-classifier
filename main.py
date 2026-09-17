@@ -151,29 +151,26 @@ def cosine_similarity(a: np.ndarray, b: np.ndarray) -> float:
     return float(np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b)))
 
 def title_description_mismatch(title: str, description: str) -> bool:
-    stop_words = {
-        "i", "a", "an", "the", "need", "want", "looking", "for",
-        "to", "my", "me", "someone", "please", "urgent", "help",
-        "campus", "student", "budget", "cheap", "affordable", "good",
-        "rate", "asap", "quickly", "available", "needed", "dm", "contact",
-        "service", "services"
-    }
-
     t_clean = title.strip().lower()
     d_clean = description.strip().lower()
 
-    # Exact substring match — if description contains title (or vice versa), bypass mismatch
-    if t_clean in d_clean or d_clean in t_clean:
+    # Fast-pass 1: Brief descriptions (< 4 words) or exact sub-string matches
+    if len(d_clean.split()) < 4 or t_clean in d_clean or d_clean in t_clean:
         return False
 
-    title_keywords = set(re.findall(r'\b\w+\b', t_clean)) - stop_words
-    desc_keywords = set(re.findall(r'\b\w+\b', d_clean)) - stop_words
+    # Fast-pass 2: Direct word overlap (words with 3+ letters)
+    t_words = set(re.findall(r'\b\w{3,}\b', t_clean))
+    d_words = set(re.findall(r'\b\w{3,}\b', d_clean))
+    if len(t_words & d_words) > 0:
+        return False
 
-    # Only flag if title has at least 2 distinct keywords and ZERO match the description
-    if len(title_keywords) >= 2 and len(title_keywords & desc_keywords) == 0:
-        return True
+    # Semantic Vector Check via ONNX
+    v_title = get_onnx_embedding(t_clean)
+    v_desc = get_onnx_embedding(d_clean)
+    sim = cosine_similarity(v_title, v_desc)
 
-    return False
+    # Flag ONLY if title and description are semantically unrelated (< 0.20)
+    return sim < 0.20
 
 def is_contextually_inappropriate(text: str) -> bool:
     """
@@ -309,14 +306,7 @@ def classify_job(job: JobPostRequest):
             "confidence": round(toxicity_score, 4),
             "reason": "Modify Job Post",
         }
-    if title_description_mismatch(job.title, job.description):
-        return {
-            "status": "FLAG_FOR_REVIEW",
-            "category": "job_unsure",
-            "confidence": 0.80,
-            "reason": "Title and description appear unrelated",
-        }
-
+  
     # ------------------------------------------------------------------
     # LAYER 3 — Semantic Embedding Relevance Check (ONNX)
     # Multi-anchor: post passes if it is close to ANY valid job anchor
@@ -329,6 +319,17 @@ def classify_job(job: JobPostRequest):
             "reason": "Modify Job Post",
         }
 
+# ------------------------------------------------------------------
+    # LAYER 3.5 — Vector Mismatch Check
+    # ------------------------------------------------------------------
+    if title_description_mismatch(job.title, job.description):
+        return {
+            "status": "FLAG_FOR_REVIEW",
+            "category": "job_unsure",
+            "confidence": 0.80,
+            "reason": "Title and description appear unrelated",
+        }
+    
     # ------------------------------------------------------------------
     # LAYER 4 — Custom Campus Scikit-Learn Classifier
     # ------------------------------------------------------------------
